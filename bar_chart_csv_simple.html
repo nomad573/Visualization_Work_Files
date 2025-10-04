@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>D3: SVG bar chart with value labels (centered)</title>
+		<script type="text/javascript" src="d3.js"></script>
+		<style type="text/css">
+			/* No style rules here yet */		
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript">
+
+			//Width and height
+			var w = 500;
+			var h = 500;
+			var barPadding = 1;
+			
+			//Function for converting CSV values from strings to Dates and numbers
+			var rowConverter = function(d) {
+				return {
+					
+					sales: +d.sales
+				};
+			}
+
+			//Load in data
+			d3.csv("bar_chart_aligned.csv", rowConverter, function(data) {
+
+				var dataset = data;
+
+				//Print data to console as table, for verification
+				console.table(dataset, ["sales"]);
+			
+				//Create SVG element
+				var svg = d3.select("body")
+							.append("svg")
+							.attr("width", w)
+							.attr("height", h);
+
+				svg.selectAll("rect")
+				   .data(dataset)
+				   .enter()
+				   .append("rect")
+				   .attr("x", function(d, i) {
+						return i * (w / dataset.length);
+				   })
+				   .attr("y", function(d) {
+						return h - (d.sales * 4);
+				   })
+				   .attr("width", w / dataset.length - barPadding)
+				   .attr("height", function(d) {
+						return d.sales * 4;
+				   })
+				   .attr("fill", function(d) {
+						return "rgb(0, 0, " + Math.round(d.sales * 10) + ")";
+				   });
+
+				svg.selectAll("text")
+				   .data(dataset)
+				   .enter()
+				   .append("text")
+				   .text(function(d) {
+						return d.average;
+				   })
+				   .attr("text-anchor", "middle")
+				   .attr("x", function(d, i) {
+						return i * (w / dataset.length) + (w / dataset.length - barPadding) / 2;
+				   })
+				   .attr("y", function(d) {
+						return h - (d.sales * 4) + 14;
+				   })
+				   .attr("font-family", "sans-serif")
+				   .attr("font-size", "11px")
+				   .attr("fill", "white");
+
+			});
+			
+		</script>
+	</body>
+</html>

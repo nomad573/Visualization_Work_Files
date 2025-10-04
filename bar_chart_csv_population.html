@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>D3: SVG bar chart with value labels (centered)</title>
+		<script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+		<style type="text/css">
+			/* No style rules here yet */		
+		</style>
+	</head>
+	<body>
+		<script type="text/javascript">
+
+			//Width and height
+			var w = 500;
+			var h = 800;
+			var labelPadding = 30; // Space for bottom labels
+			var titlePadding = 40; // Space for title at top
+			var barPadding = 1;
+			
+			//Function for converting CSV values from strings to Dates and numbers
+			var rowConverter = function(d) {
+				return {
+					
+					population: +d.population
+				};
+			}
+
+			//Load in data
+			d3.csv("population.csv", rowConverter, function(data) {
+
+				var dataset = data;
+
+				//Print data to console as table, for verification
+				console.table(dataset, ["population"]);
+				
+				//Find the maximum value for scaling
+				var maxValue = d3.max(dataset, function(d) { return d.population; });
+				
+				//Set up scaling to fit all bars within the canvas
+				var maxBarHeight = h - 80; // Leave padding for labels and spacing
+				var scaleFactor = maxBarHeight / maxValue;
+			
+				//Create SVG element
+				var svg = d3.select("body")
+							.append("svg")
+							.attr("width", w)
+							.attr("height", h + labelPadding + titlePadding);
+
+				// Add title
+				svg.append("text")
+				   .attr("x", w / 2)
+				   .attr("y", 25)
+				   .attr("text-anchor", "middle")
+				   .attr("font-family", "sans-serif")
+				   .attr("font-size", "18px")
+				   .attr("font-weight", "bold")
+				   .attr("fill", "black")
+				   .text("World Population in Millions by Century");
+
+				svg.selectAll("rect")
+				   .data(dataset)
+				   .enter()
+				   .append("rect")
+				   .attr("x", function(d, i) {
+						return i * (w / dataset.length);
+				   })
+				   .attr("y", function(d) {
+						return titlePadding + h - (d.population * scaleFactor);
+				   })
+				   .attr("width", w / dataset.length - barPadding)
+				   .attr("height", function(d) {
+						return d.population * scaleFactor;
+				   })
+				   .attr("fill", function(d) {
+						return "rgb(0, 0, " + Math.round(d.population * 10) + ")";
+				   });
+
+				svg.selectAll("text")
+				   .data(dataset)
+				   .enter()
+				   .append("text")
+				   .text(function(d) {
+						return d.population;
+				   })
+				   .attr("text-anchor", "middle")
+				   .attr("x", function(d, i) {
+						return i * (w / dataset.length) + (w / dataset.length - barPadding) / 2;
+				   })
+				   .attr("y", function(d) {
+						return titlePadding + h - (d.population * scaleFactor) + 15;
+				   })
+				   .attr("font-family", "sans-serif")
+				   .attr("font-size", "11px")
+				   .attr("fill", "white");
+
+				// Add labels under each bar
+				svg.selectAll("text.bottom-label")
+				   .data(dataset)
+				   .enter()
+				   .append("text")
+				   .attr("class", "bottom-label")
+				   .text(function(d, i) {
+						var centuryNames = ["~100AD", "~200AD", "300AD", "400AD", "900AD", "1000AD", "1200AD", "1300AD", "1400AD", "1500AD", 
+										   "1600AD", "1700AD", "1800AD", "1900AD", "2000AD", "2100AD"];
+						return centuryNames[i] ;
+				   })
+				   .attr("text-anchor", "middle")
+				   .attr("x", function(d, i) {
+						return i * (w / dataset.length) + (w / dataset.length - barPadding) / 2;
+				   })
+				   .attr("y", titlePadding + h + 15)
+				   .attr("font-family", "sans-serif")
+				   .attr("font-size", "6px")
+				   .attr("fill", "black");
+
+			});
+			
+		</script>
+	</body>
+</html>
