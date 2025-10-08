@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>COVID-19 Time Series Chart</title>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; }
         .axis-label { font-size: 12px; }
@@ -14,24 +14,25 @@
     <h2>COVID-19 Time Series: Cases, Deaths, Recoveries by Region</h2>
     <svg width="800" height="500"></svg>
     <script>
-    const margin = {top: 50, right: 150, bottom: 50, left: 60},
-          width = 800 - margin.left - margin.right,
-          height = 500 - margin.top - margin.bottom;
+    var margin = {top: 50, right: 150, bottom: 50, left: 60},
+        width = 800 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
 
-    const svg = d3.select("svg")
+    var svg = d3.select("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
       .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-    const parseDate = d3.timeParse("%Y-%m-%d");
-    const colors = d3.scaleOrdinal()
+    var parseDate = d3.timeParse("%Y-%m-%d");
+    var colors = d3.scaleOrdinal()
         .domain(["cases", "deaths", "recoveries"])
         .range(["steelblue", "crimson", "seagreen"]);
-    const regionColors = d3.scaleOrdinal(d3.schemeCategory10);
+    var regionColors = d3.scaleOrdinal(d3.schemeCategory10);
 
-    d3.csv("covid_timeseries.csv").then(data => {
-        data.forEach(d => {
+    d3.csv("covid_timeseries.csv", function(error, data) {
+        if (error) throw error;
+        data.forEach(function(d) {
             d.date = parseDate(d.date);
             d.cases = +d.cases;
             d.deaths = +d.deaths;
@@ -39,93 +40,92 @@
         });
 
         // Get unique regions
-        const regions = Array.from(new Set(data.map(d => d.region)));
+        var regions = Array.from(new Set(data.map(function(d) { return d.region; })));
 
         // X scale
-        const x = d3.scaleTime()
-            .domain(d3.extent(data, d => d.date))
-            .range([0, width]);
+            var x = d3.scaleTime()
+                .domain(d3.extent(data, function(d) { return d.date; }))
+                .range([0, width]);
 
-        // Y scale (max of all quantitative attributes)
-        const y = d3.scaleLinear()
-            .domain([0, d3.max(data, d => Math.max(d.cases, d.deaths, d.recoveries))]).nice()
-            .range([height, 0]);
+            // Y scale (max of all quantitative attributes)
+            var y = d3.scaleLinear()
+                .domain([0, d3.max(data, function(d) { return Math.max(d.cases, d.deaths, d.recoveries); })])
+                .nice()
+                .range([height, 0]);
 
-        // X axis
-        svg.append("g")
-            .attr("transform", `translate(0,${height})`)
-            .call(d3.axisBottom(x).ticks(6))
-            .append("text")
-            .attr("class", "axis-label")
-            .attr("x", width / 2)
-            .attr("y", 40)
-            .attr("fill", "black")
-            .text("Date");
+            // X axis
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x).ticks(6))
+              .append("text")
+                .attr("class", "axis-label")
+                .attr("x", width / 2)
+                .attr("y", 40)
+                .attr("fill", "black")
+                .text("Date");
 
-        // Y axis
-        svg.append("g")
-            .call(d3.axisLeft(y))
-            .append("text")
-            .attr("class", "axis-label")
-            .attr("transform", "rotate(-90)")
-            .attr("x", -height / 2)
-            .attr("y", -45)
-            .attr("fill", "black")
-            .attr("text-anchor", "middle")
-            .text("Count");
+            // Y axis
+            svg.append("g")
+                .call(d3.axisLeft(y))
+              .append("text")
+                .attr("class", "axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("x", -height / 2)
+                .attr("y", -45)
+                .attr("fill", "black")
+                .attr("text-anchor", "middle")
+                .text("Count");
 
-        // For each region, draw lines for cases, deaths, recoveries
-        const metrics = ["cases", "deaths", "recoveries"];
-        regions.forEach((region, i) => {
-            const regionData = data.filter(d => d.region === region);
-            metrics.forEach(metric => {
-                const line = d3.line()
-                    .x(d => x(d.date))
-                    .y(d => y(d[metric]));
-                svg.append("path")
-                    .datum(regionData)
-                    .attr("fill", "none")
-                    .attr("stroke", colors(metric))
-                    .attr("stroke-width", 2)
-                    .attr("d", line)
-                    .attr("opacity", 0.8)
-                    .attr("class", `line-${region.replace(/\s/g, '')}-${metric}`)
+            // For each region, draw lines for cases, deaths, recoveries
+            var metrics = ["cases", "deaths", "recoveries"];
+            regions.forEach(function(region, i) {
+                var regionData = data.filter(function(d) { return d.region === region; });
+                metrics.forEach(function(metric) {
+                    var line = d3.line()
+                        .x(function(d) { return x(d.date); })
+                        .y(function(d) { return y(d[metric]); });
+                    svg.append("path")
+                        .datum(regionData)
+                        .attr("fill", "none")
+                        .attr("stroke", colors(metric))
+                        .attr("stroke-width", 2)
+                        .attr("d", line)
+                        .attr("opacity", 0.8)
+                        .attr("class", "line-" + region.replace(/\s/g, '') + "-" + metric)
+                        .attr("stroke-dasharray", metric === "cases" ? "" : metric === "deaths" ? "4,2" : "2,2");
+                });
+            });
+
+            // Legend
+            var legend = svg.append("g")
+                .attr("transform", "translate(" + (width + 20) + ", 0)");
+
+            metrics.forEach(function(metric, i) {
+                legend.append("rect")
+                    .attr("x", 0)
+                    .attr("y", i * 25)
+                    .attr("width", 18)
+                    .attr("height", 3)
+                    .attr("fill", colors(metric))
+                    .attr("stroke", "black")
                     .attr("stroke-dasharray", metric === "cases" ? "" : metric === "deaths" ? "4,2" : "2,2");
+                legend.append("text")
+                    .attr("x", 25)
+                    .attr("y", i * 25 + 6)
+                    .text(metric.charAt(0).toUpperCase() + metric.slice(1));
+            });
+
+            // Region legend
+            regions.forEach(function(region, i) {
+                legend.append("circle")
+                    .attr("cx", 0)
+                    .attr("cy", 90 + i * 20)
+                    .attr("r", 6)
+                    .attr("fill", regionColors(region));
+                legend.append("text")
+                    .attr("x", 15)
+                    .attr("y", 90 + i * 20 + 4)
+                    .text(region);
             });
         });
-
-        // Legend
-        const legend = svg.append("g")
-            .attr("transform", `translate(${width + 20}, 0)`);
-
-        metrics.forEach((metric, i) => {
-            legend.append("rect")
-                .attr("x", 0)
-                .attr("y", i * 25)
-                .attr("width", 18)
-                .attr("height", 3)
-                .attr("fill", colors(metric))
-                .attr("stroke", "black")
-                .attr("stroke-dasharray", metric === "cases" ? "" : metric === "deaths" ? "4,2" : "2,2");
-            legend.append("text")
-                .attr("x", 25)
-                .attr("y", i * 25 + 6)
-                .text(metric.charAt(0).toUpperCase() + metric.slice(1));
-        });
-
-        // Region legend
-        regions.forEach((region, i) => {
-            legend.append("circle")
-                .attr("cx", 0)
-                .attr("cy", 90 + i * 20)
-                .attr("r", 6)
-                .attr("fill", regionColors(region));
-            legend.append("text")
-                .attr("x", 15)
-                .attr("y", 90 + i * 20 + 4)
-                .text(region);
-        });
-    });
-    </script>
-</body>
-</html>
+        </script>
