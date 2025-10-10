@@ -39,6 +39,7 @@
 			//Create bars
 			svg.selectAll("rect")
 			   .data(dataset)
+			   .transition
 			   .duration(3000)
 			   .enter()
 			   .append("rect")
