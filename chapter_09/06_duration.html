@@ -90,8 +90,8 @@
 					//Update all rects
 					svg.selectAll("rect")
 					   .data(dataset)
-					   .transition()
-					   .duration(1000)								// <-- Controlled duration, 1000ms = 1s
+					   
+					   .duration(3000)								// <-- Controlled duration, 1000ms = 1s
 					   .attr("y", function(d) {
 					   		return h - yScale(d);
 					   })
