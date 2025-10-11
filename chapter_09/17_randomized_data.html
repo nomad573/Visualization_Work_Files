@@ -61,18 +61,21 @@
 			   .enter()
 			   .append("text")
 			   .text(function(d) {
-			   		return d;
+				   return d;
 			   })
 			   .attr("text-anchor", "middle")
 			   .attr("x", function(d, i) {
-			   		return xScale(i) + xScale.bandwidth() / 2;
+				   return xScale(i) + xScale.bandwidth() / 2;
 			   })
 			   .attr("y", function(d) {
-			   		return h - yScale(d) + 14;
+				   return h - yScale(d) + 14;
 			   })
 			   .attr("font-family", "sans-serif")
 			   .attr("font-size", "11px")
-			   .attr("fill", "white");
+			   .attr("fill", function(d) {
+				   // If the bar is tall enough to cover the text, use white, else black
+				   return yScale(d) > 14 ? "white" : "black";
+			   });
 
 
 
@@ -89,22 +92,25 @@
 						dataset.push(newNumber);			 			//Add new number to array
 					}
 
-					//Update all rects
-					svg.selectAll("rect")
+					//Update all labels
+					svg.selectAll("text")
 					   .data(dataset)
 					   .transition()
 					   .delay(function(d, i) {
 						   return i / dataset.length * 1000;
 					   })
 					   .duration(500)
-					   .attr("y", function(d) {
-					   		return h - yScale(d);
+					   .text(function(d) {
+						   return d;
 					   })
-					   .attr("height", function(d) {
-					   		return yScale(d);
+					   .attr("x", function(d, i) {
+						   return xScale(i) + xScale.bandwidth() / 2;
+					   })
+					   .attr("y", function(d) {
+						   return h - yScale(d) + 14;
 					   })
 					   .attr("fill", function(d) {
-							return "rgb(0, 0, " + Math.round(d * 10) + ")";
+						   return yScale(d) > 14 ? "white" : "black";
 					   });
 
 					//Update all labels
