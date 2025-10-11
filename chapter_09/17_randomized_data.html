@@ -68,14 +68,14 @@
 				   return xScale(i) + xScale.bandwidth() / 2;
 			   })
 			   .attr("y", function(d) {
-				   // Always at the top of where the bar will be
-				   return h - yScale(d) + 12;
+				   // If value is 1 or less, put label above the bar
+				   return d <= 1 ? (h - yScale(d)) - 4 : (h - yScale(d)) + 14;
 			   })
 			   .attr("font-family", "sans-serif")
 			   .attr("font-size", "11px")
 			   .attr("fill", function(d) {
-				   // If the bar is tall enough to cover the text, use white, else black
-				   return yScale(d) > 14 ? "white" : "black";
+				   // If value is 1 or less, label is black; else, white
+				   return d <= 1 ? "black" : "white";
 			   });
 
 
@@ -93,6 +93,24 @@
 						dataset.push(newNumber);			 			//Add new number to array
 					}
 
+					//Update all rects
+					svg.selectAll("rect")
+					   .data(dataset)
+					   .transition()
+					   .delay(function(d, i) {
+						   return i / dataset.length * 1000;
+					   })
+					   .duration(500)
+					   .attr("y", function(d) {
+					   		return h - yScale(d);
+					   })
+					   .attr("height", function(d) {
+					   		return yScale(d);
+					   })
+					   .attr("fill", function(d) {
+							return "rgb(0, 0, " + Math.round(d * 10) + ")";
+					   });
+
 					//Update all labels
 					svg.selectAll("text")
 					   .data(dataset)
@@ -108,29 +126,10 @@
 						   return xScale(i) + xScale.bandwidth() / 2;
 					   })
 					   .attr("y", function(d) {
-						   // Always at the top of where the bar will be
-						   return h - yScale(d) + 12;
+						   return d <= 1 ? (h - yScale(d)) - 4 : (h - yScale(d)) + 14;
 					   })
 					   .attr("fill", function(d) {
-						   return yScale(d) > 14 ? "white" : "black";
-					   });
-
-					//Update all labels
-					svg.selectAll("text")
-					   .data(dataset)
-					   .transition()
-					   .delay(function(d, i) {
-						   return i / dataset.length * 1000;
-					   })
-					   .duration(500)
-					   .text(function(d) {
-					   		return d;
-					   })
-					   .attr("x", function(d, i) {
-					   		return xScale(i) + xScale.bandwidth() / 2;
-					   })
-					   .attr("y", function(d) {
-					   		return h - yScale(d) + 14;
+						   return d <= 1 ? "black" : "white";
 					   });
 					   				
 				});
