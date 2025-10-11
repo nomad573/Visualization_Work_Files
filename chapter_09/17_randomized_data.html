@@ -68,7 +68,8 @@
 				   return xScale(i) + xScale.bandwidth() / 2;
 			   })
 			   .attr("y", function(d) {
-				   return h - yScale(d) + 14;
+				   // Always at the top of where the bar will be
+				   return h - yScale(d) + 12;
 			   })
 			   .attr("font-family", "sans-serif")
 			   .attr("font-size", "11px")
@@ -107,7 +108,8 @@
 						   return xScale(i) + xScale.bandwidth() / 2;
 					   })
 					   .attr("y", function(d) {
-						   return h - yScale(d) + 14;
+						   // Always at the top of where the bar will be
+						   return h - yScale(d) + 12;
 					   })
 					   .attr("fill", function(d) {
 						   return yScale(d) > 14 ? "white" : "black";
