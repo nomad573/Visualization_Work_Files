@@ -36,8 +36,8 @@
             "#393b79", "#637939", "#8c6d31", "#843c39", "#7b4173"
         ];
         
-        // Create color scale that assigns a unique color to each node
-        const nodeColors = d3.scaleOrdinal(colors);
+    // Placeholder for color scale; we'll build a manufacturer-based scale after nodes are known
+    let nodeColors = null;
 
         // Create force simulation with slower animation
         const simulation = d3.forceSimulation()
@@ -121,15 +121,7 @@
                     rebuildLinks();
                 });
 
-            // Legend: color swatches for each vehicle
-            const legend = controls.append("div").attr("class","legend").style("display","inline-block").style("vertical-align","top").style("margin-left","20px");
-            legend.append("div").text("Model colors:").style("font-weight","bold").style("margin-bottom","4px");
-            const legendList = legend.append("div").style("max-height","120px").style("overflow","auto").style("border","1px solid #ddd").style("padding","6px").style("background","#fff");
-            nodes.forEach(n => {
-                const item = legendList.append("div").style("display","flex").style("align-items","center").style("margin-bottom","4px");
-                item.append("div").style("width","14px").style("height","14px").style("background", nodeColors(n.id)).style("margin-right","8px").style("border-radius","2px");
-                item.append("div").text(n.id).style("font-size","12px");
-            });
+            
 
             // Create nodes
             const node = svg.append("g")
@@ -138,11 +130,30 @@
                 .data(nodes)
                 .enter().append("g");
 
+            // Build a color scale based on the `manufacturer` attribute so nodes sharing the same
+            // manufacturer get the same color. This satisfies "use an attribute of the data to
+            // determine the color of each individual node." Use the existing palette.
+            const manufacturers = Array.from(new Set(nodes.map(n => n.manufacturer)));
+            const manufacturerColors = d3.scaleOrdinal()
+                .domain(manufacturers)
+                .range(colors);
+            nodeColors = (d) => manufacturerColors(d.manufacturer);
+
+            // Legend: manufacturer color swatches
+            const legend = controls.append("div").attr("class","legend").style("display","inline-block").style("vertical-align","top").style("margin-left","20px");
+            legend.append("div").text("Manufacturer colors:").style("font-weight","bold").style("margin-bottom","4px");
+            const legendList = legend.append("div").style("max-height","120px").style("overflow","auto").style("border","1px solid #ddd").style("padding","6px").style("background","#fff");
+            manufacturers.forEach(m => {
+                const item = legendList.append("div").style("display","flex").style("align-items","center").style("margin-bottom","4px");
+                item.append("div").style("width","14px").style("height","14px").style("background", manufacturerColors(m)).style("margin-right","8px").style("border-radius","2px");
+                item.append("div").text(m).style("font-size","12px");
+            });
+
             // Add circles to nodes
             const circles = node.append("circle")
                 .attr("r", 8)
-                .attr("fill", d => nodeColors(d.id)) // Use unique color for each vehicle model
-                .style("stroke", d => d3.rgb(nodeColors(d.id)).darker(0.5)) // Darker border for better visibility
+                .attr("fill", d => nodeColors ? nodeColors(d) : '#999') // Color by manufacturer attribute
+                .style("stroke", d => d3.rgb(nodeColors ? nodeColors(d) : '#999').darker(0.5)) // Darker border for better visibility
                 .style("stroke-width", 2)
                 .call(d3.drag()
                     .on("start", dragstarted)
@@ -161,8 +172,7 @@
 
             // Update force simulation
             simulation
-                .nodes(nodes)
-                .on("tick", ticked);
+                .nodes(nodes);
 
             // Build links and gradients based on current threshold
             function rebuildLinks() {
@@ -187,11 +197,11 @@
 
                 gradients.append("stop")
                     .attr("offset", "0%")
-                    .attr("stop-color", d => nodeColors(nodeById[d.source].id));
+                    .attr("stop-color", d => nodeColors ? nodeColors(nodeById[d.source]) : '#999');
 
                 gradients.append("stop")
                     .attr("offset", "100%")
-                    .attr("stop-color", d => nodeColors(nodeById[d.target].id));
+                    .attr("stop-color", d => nodeColors ? nodeColors(nodeById[d.target]) : '#999');
 
                 // Create links with gradients
                 const linkSel = svg.append("g")
@@ -238,13 +248,14 @@
             // initial build
             rebuildLinks();
 
-            // Tick function to update positions
+            // Tick function to update positions (updates current links selection)
             function ticked() {
-                link
-                    .attr("x1", d => d.source.x)
-                    .attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x)
-                    .attr("y2", d => d.target.y);
+                const linkSel = svg.selectAll('.links line');
+                linkSel
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
 
                 node
                     .attr("transform", d => `translate(${d.x},${d.y})`);
