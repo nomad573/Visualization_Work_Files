@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>EV Sales Force-Directed Graph</title>
+    <script src="../d3.js"></script>
+    <style>
+        .links line {
+            stroke: #999;
+            stroke-opacity: 0.6;
+        }
+
+        .nodes circle {
+            stroke: #fff;
+            stroke-width: 1.5px;
+        }
+
+        .node text {
+            pointer-events: none;
+            font: 10px sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Set the dimensions of the canvas
+        const width = 960;
+        const height = 600;
+
+        // Create an extended color palette for individual nodes
+        const colors = [
+            "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", 
+            "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+            "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5",
+            "#c49c94", "#f7b6d2", "#c7c7c7", "#dbdb8d", "#9edae5",
+            "#393b79", "#637939", "#8c6d31", "#843c39", "#7b4173"
+        ];
+        
+        // Create color scale that assigns a unique color to each node
+        const nodeColors = d3.scaleOrdinal(colors);
+
+        // Create force simulation
+        const simulation = d3.forceSimulation()
+            .force("link", d3.forceLink().id(d => d.id))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        // Create SVG container
+        const svg = d3.select("body").append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        // Load and process the data
+        d3.csv("ev_sales_data.csv", function(error, data) {
+            if (error) throw error;
+
+            // Process data to get nodes (vehicles) and calculate correlations for links
+            const vehicles = Object.keys(data[0]).slice(1); // Skip 'Date' column
+            
+            // Create nodes array with manufacturer info
+            const nodes = vehicles.map(vehicle => ({
+                id: vehicle,
+                manufacturer: vehicle.split(' ')[0], // First word is manufacturer
+                sales: data.map(d => +d[vehicle] || 0) // Get sales numbers
+            }));
+
+            // Calculate correlations between vehicles to determine link forces
+            const links = [];
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = i + 1; j < nodes.length; j++) {
+                    // Calculate correlation coefficient between sales patterns
+                    const correlation = calculateCorrelation(
+                        nodes[i].sales,
+                        nodes[j].sales
+                    );
+                    
+                    // Only create links for vehicles with meaningful correlation
+                    if (!isNaN(correlation) && Math.abs(correlation) > 0.5) {
+                        links.push({
+                            source: nodes[i].id,
+                            target: nodes[j].id,
+                            value: Math.abs(correlation) // Link strength based on correlation
+                        });
+                    }
+                }
+            }
+
+            // Create links
+            // Create a gradient for each link
+            const gradients = svg.append("defs").selectAll("linearGradient")
+                .data(links)
+                .enter().append("linearGradient")
+                .attr("id", (d, i) => `link-gradient-${i}`)
+                .attr("gradientUnits", "userSpaceOnUse");
+
+            gradients.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", d => nodeColors(d.source.id));
+
+            gradients.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", d => nodeColors(d.target.id));
+
+            // Create links with gradients
+            const link = svg.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(links)
+                .enter().append("line")
+                .attr("stroke", (d, i) => `url(#link-gradient-${i})`)
+                .attr("stroke-width", d => Math.sqrt(d.value) * 2)
+                .style("stroke-opacity", 0.7);
+
+            // Create nodes
+            const node = svg.append("g")
+                .attr("class", "nodes")
+                .selectAll("g")
+                .data(nodes)
+                .enter().append("g");
+
+            // Add circles to nodes
+            const circles = node.append("circle")
+                .attr("r", 8)
+                .attr("fill", d => nodeColors(d.id)) // Use unique color for each vehicle model
+                .style("stroke", d => d3.rgb(nodeColors(d.id)).darker(0.5)) // Darker border for better visibility
+                .style("stroke-width", 2)
+                .call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+
+            // Add labels to nodes
+            const labels = node.append("text")
+                .text(d => d.id)
+                .attr('x', 10)
+                .attr('y', 3);
+
+            // Add titles for tooltips
+            circles.append("title")
+                .text(d => d.id + "\nManufacturer: " + d.manufacturer);
+
+            // Update force simulation
+            simulation
+                .nodes(nodes)
+                .on("tick", ticked);
+
+            simulation.force("link")
+                .links(links);
+
+            // Tick function to update positions
+            function ticked() {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("transform", d => `translate(${d.x},${d.y})`);
+            }
+        });
+
+        // Drag functions
+        function dragstarted(d) {
+            if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(d) {
+            d.fx = d3.event.x;
+            d.fy = d3.event.y;
+        }
+
+        function dragended(d) {
+            if (!d3.event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+        }
+
+        // Function to calculate correlation coefficient
+        function calculateCorrelation(array1, array2) {
+            const n = array1.length;
+            
+            // Calculate means
+            const mean1 = array1.reduce((a, b) => a + b) / n;
+            const mean2 = array2.reduce((a, b) => a + b) / n;
+            
+            // Calculate covariance and standard deviations
+            let covariance = 0;
+            let std1 = 0;
+            let std2 = 0;
+            
+            for (let i = 0; i < n; i++) {
+                const diff1 = array1[i] - mean1;
+                const diff2 = array2[i] - mean2;
+                covariance += diff1 * diff2;
+                std1 += diff1 * diff1;
+                std2 += diff2 * diff2;
+            }
+            
+            // Return correlation coefficient
+            return covariance / Math.sqrt(std1 * std2);
+        }
+    </script>
+</body>
+</html>
