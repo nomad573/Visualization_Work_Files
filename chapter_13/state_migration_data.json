@@ -1,0 +1,26 @@
+{
+    "nodes": [
+        {"id": "CA", "region": "West", "population": 39538223},
+        {"id": "TX", "region": "South", "population": 29145505},
+        {"id": "FL", "region": "South", "population": 21538187},
+        {"id": "NY", "region": "Northeast", "population": 20201249},
+        {"id": "IL", "region": "Midwest", "population": 12801989},
+        {"id": "PA", "region": "Northeast", "population": 12801989},
+        {"id": "OH", "region": "Midwest", "population": 11799448},
+        {"id": "GA", "region": "South", "population": 10711908},
+        {"id": "MI", "region": "Midwest", "population": 10077331},
+        {"id": "NC", "region": "South", "population": 10439388}
+    ],
+    "links": [
+        {"source": "CA", "target": "TX", "value": 82000},
+        {"source": "CA", "target": "FL", "value": 38000},
+        {"source": "NY", "target": "FL", "value": 63000},
+        {"source": "IL", "target": "FL", "value": 28000},
+        {"source": "NY", "target": "CA", "value": 31000},
+        {"source": "TX", "target": "FL", "value": 33000},
+        {"source": "OH", "target": "FL", "value": 25000},
+        {"source": "NY", "target": "TX", "value": 21000},
+        {"source": "IL", "target": "TX", "value": 29000},
+        {"source": "MI", "target": "FL", "value": 22000}
+    ]
+}
