@@ -39,11 +39,16 @@
         // Create color scale that assigns a unique color to each node
         const nodeColors = d3.scaleOrdinal(colors);
 
-        // Create force simulation
+        // Create force simulation with slower animation
         const simulation = d3.forceSimulation()
             .force("link", d3.forceLink().id(d => d.id))
             .force("charge", d3.forceManyBody().strength(-300))
-            .force("center", d3.forceCenter(width / 2, height / 2));
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            // Slow down the simulation
+            .alphaDecay(0.005)  // Default is ~0.0228, smaller = slower cooling
+            .velocityDecay(0.3)  // Default is 0.4, smaller = more momentum
+            .alpha(0.5)  // Initial alpha value (0-1)
+            .alphaTarget(0);  // The simulation will slowly cool to this value
 
         // Create SVG container
         const svg = d3.select("body").append("svg")
@@ -160,9 +165,14 @@
             }
         });
 
-        // Drag functions
+        // Drag functions with gentler transitions
         function dragstarted(d) {
-            if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+            if (!d3.event.active) {
+                simulation
+                    .alphaTarget(0.2)  // Reduced from 0.3 for gentler movement
+                    .alpha(0.5)  // Set a lower starting alpha
+                    .restart();
+            }
             d.fx = d.x;
             d.fy = d.y;
         }
@@ -173,7 +183,11 @@
         }
 
         function dragended(d) {
-            if (!d3.event.active) simulation.alphaTarget(0);
+            if (!d3.event.active) {
+                simulation
+                    .alphaTarget(0)
+                    .alpha(0.1);  // Gentle release
+            }
             d.fx = null;
             d.fy = null;
         }
