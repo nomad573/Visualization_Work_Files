@@ -70,51 +70,66 @@
             }));
 
             // Calculate correlations between vehicles to determine link forces
-            const links = [];
+            // We'll create links dynamically and expose a slider to control the correlation threshold.
+            let correlationThreshold = 0.5; // initial threshold
+            const minDistance = 30, maxDistance = 220; // distance mapping range
+
+            // helper: compute all pairwise correlations (keeps raw values)
+            const allLinks = [];
             for (let i = 0; i < nodes.length; i++) {
                 for (let j = i + 1; j < nodes.length; j++) {
-                    // Calculate correlation coefficient between sales patterns
-                    const correlation = calculateCorrelation(
-                        nodes[i].sales,
-                        nodes[j].sales
-                    );
-                    
-                    // Only create links for vehicles with meaningful correlation
-                    if (!isNaN(correlation) && Math.abs(correlation) > 0.5) {
-                        links.push({
+                    const correlation = calculateCorrelation(nodes[i].sales, nodes[j].sales);
+                    if (!isNaN(correlation)) {
+                        allLinks.push({
                             source: nodes[i].id,
                             target: nodes[j].id,
-                            value: Math.abs(correlation) // Link strength based on correlation
+                            value: Math.abs(correlation)
                         });
                     }
                 }
             }
 
-            // Create links
-            // Create a gradient for each link
-            const gradients = svg.append("defs").selectAll("linearGradient")
-                .data(links)
-                .enter().append("linearGradient")
-                .attr("id", (d, i) => `link-gradient-${i}`)
-                .attr("gradientUnits", "userSpaceOnUse");
+            // Create a container for controls (slider + labels)
+            const controls = d3.select("body").insert("div", ":first-child").attr("class", "controls").style("margin","8px");
+            controls.append("label").text("Correlation threshold: ").style("margin-right","6px");
+            const thresholdLabel = controls.append("span").text(correlationThreshold.toFixed(2)).style("margin-right","12px");
+            const thresholdSlider = controls.append("input")
+                .attr("type","range")
+                .attr("min",0)
+                .attr("max",1)
+                .attr("step",0.01)
+                .attr("value", correlationThreshold)
+                .on("input", function() {
+                    correlationThreshold = +this.value;
+                    thresholdLabel.text(correlationThreshold.toFixed(2));
+                    rebuildLinks();
+                });
 
-            gradients.append("stop")
-                .attr("offset", "0%")
-                .attr("stop-color", d => nodeColors(d.source.id));
+            // Optional: slider for maxDistance tuning
+            controls.append("span").style("margin-left","20px").text("Max link distance: ");
+            const maxDistLabel = controls.append("span").text(maxDistance).style("margin-right","6px");
+            const maxDistSlider = controls.append("input")
+                .attr("type","range")
+                .attr("min",80)
+                .attr("max",400)
+                .attr("step",10)
+                .attr("value", maxDistance)
+                .on("input", function() {
+                    const v = +this.value;
+                    maxDistLabel.text(v);
+                    // update mapping and rebuild
+                    rebuildLinks();
+                });
 
-            gradients.append("stop")
-                .attr("offset", "100%")
-                .attr("stop-color", d => nodeColors(d.target.id));
-
-            // Create links with gradients
-            const link = svg.append("g")
-                .attr("class", "links")
-                .selectAll("line")
-                .data(links)
-                .enter().append("line")
-                .attr("stroke", (d, i) => `url(#link-gradient-${i})`)
-                .attr("stroke-width", d => Math.sqrt(d.value) * 2)
-                .style("stroke-opacity", 0.7);
+            // Legend: color swatches for each vehicle
+            const legend = controls.append("div").attr("class","legend").style("display","inline-block").style("vertical-align","top").style("margin-left","20px");
+            legend.append("div").text("Model colors:").style("font-weight","bold").style("margin-bottom","4px");
+            const legendList = legend.append("div").style("max-height","120px").style("overflow","auto").style("border","1px solid #ddd").style("padding","6px").style("background","#fff");
+            nodes.forEach(n => {
+                const item = legendList.append("div").style("display","flex").style("align-items","center").style("margin-bottom","4px");
+                item.append("div").style("width","14px").style("height","14px").style("background", nodeColors(n.id)).style("margin-right","8px").style("border-radius","2px");
+                item.append("div").text(n.id).style("font-size","12px");
+            });
 
             // Create nodes
             const node = svg.append("g")
@@ -149,8 +164,79 @@
                 .nodes(nodes)
                 .on("tick", ticked);
 
-            simulation.force("link")
-                .links(links);
+            // Build links and gradients based on current threshold
+            function rebuildLinks() {
+                // filter links by threshold
+                const currentMaxDist = +maxDistSlider.node ? +maxDistSlider.node().value : maxDistance;
+                const filtered = allLinks.filter(d => d.value >= correlationThreshold);
+
+                // remove old defs and links
+                svg.select("defs").remove();
+                svg.selectAll(".links line").remove();
+
+                // Create a map of node id -> node object (resolved positions will be added by simulation)
+                const nodeById = {};
+                nodes.forEach(n => nodeById[n.id] = n);
+
+                // create defs for gradients
+                const gradients = svg.append("defs").selectAll("linearGradient")
+                    .data(filtered)
+                    .enter().append("linearGradient")
+                    .attr("id", (d, i) => `link-gradient-${i}`)
+                    .attr("gradientUnits", "userSpaceOnUse");
+
+                gradients.append("stop")
+                    .attr("offset", "0%")
+                    .attr("stop-color", d => nodeColors(nodeById[d.source].id));
+
+                gradients.append("stop")
+                    .attr("offset", "100%")
+                    .attr("stop-color", d => nodeColors(nodeById[d.target].id));
+
+                // Create links with gradients
+                const linkSel = svg.append("g")
+                    .attr("class", "links")
+                    .selectAll("line")
+                    .data(filtered)
+                    .enter().append("line")
+                    .attr("stroke", (d, i) => `url(#link-gradient-${i})`)
+                    .attr("stroke-width", d => Math.sqrt(d.value) * 2)
+                    .style("stroke-opacity", 0.7);
+
+                // Configure link force to map correlation -> distance & strength
+                const linkForce = d3.forceLink(filtered)
+                    .id(d => d.id)
+                    .distance(d => {
+                        // invert value so higher correlation -> shorter distance
+                        const v = Math.max(0.0001, d.value); // avoid 0
+                        const min = minDistance;
+                        const max = currentMaxDist;
+                        return max - (max - min) * v;
+                    })
+                    .strength(d => 0.1 + 0.9 * (d.value || 0));
+
+                // apply link force and links
+                simulation.force("link", linkForce);
+                simulation.force("link").links(filtered);
+
+                // restart simulation gently
+                simulation.alpha(0.4).restart();
+
+                // update tick binding to use the new link selection
+                simulation.on("tick", () => {
+                    linkSel
+                        .attr("x1", d => (d.source.x))
+                        .attr("y1", d => (d.source.y))
+                        .attr("x2", d => (d.target.x))
+                        .attr("y2", d => (d.target.y));
+
+                    node
+                        .attr("transform", d => `translate(${d.x},${d.y})`);
+                });
+            }
+
+            // initial build
+            rebuildLinks();
 
             // Tick function to update positions
             function ticked() {
